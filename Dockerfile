@@ -35,8 +35,8 @@ RUN npm install
 # Copy the rest of the application's source code.
 COPY . .
 
-# Build the application.
-RUN npm run build
+# Build the application with verbose logging for debugging.
+RUN npm run build -- --verbose
 
 # The "preview" script runs on port 4321 by default.
 EXPOSE 4321
@@ -44,3 +44,4 @@ EXPOSE 4321
 # The command to run the application using Astro's preview server.
 # The "--host" flag is necessary to expose the server to the host machine.
 CMD [ "npm", "run", "preview", "--", "--host", "0.0.0.0" ]
+

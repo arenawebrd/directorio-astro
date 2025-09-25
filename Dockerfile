@@ -39,7 +39,8 @@ COPY . .
 RUN npm run build
 
 # Expose the port the server will run on.
-EXPOSE 4321
+# EXPOSE 4321
 
 # The command to run the standalone server.
 CMD [ "node", "./dist/server/entry.mjs" ]
+

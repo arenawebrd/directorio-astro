@@ -16,8 +16,9 @@ COPY . .
 # Build the application.
 RUN npm run build
 
-# The "start" script uses "serve dist/". The serve package defaults to port 3000.
-EXPOSE 3000
+# The "preview" script runs on port 4321 by default.
+EXPOSE 4321
 
-# The command to run the application.
-CMD [ "npm", "start" ]
+# The command to run the application using Astro's preview server.
+# The "--host" flag is necessary to expose the server to the host machine.
+CMD [ "npm", "run", "preview", "--", "--host", "0.0.0.0" ]

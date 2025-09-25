@@ -43,5 +43,3 @@ EXPOSE 4321
 
 # The command to run the standalone server.
 CMD [ "node", "./dist/server/entry.mjs" ]
-
-

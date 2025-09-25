@@ -9,6 +9,6 @@ export default defineConfig({
   adapter: node({
     mode: 'standalone'
   }),
-  site: 'https://www.directoriord.com', // Replace with your actual domain
+  site: 'https://directorio-astro.arenaweb.net', // Replace with your actual domain
   integrations: [tailwind(), sitemap()],
 });

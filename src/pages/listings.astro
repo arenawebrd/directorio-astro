@@ -1,0 +1,187 @@
+---
+import Layout from '../layouts/Layout.astro';
+import type { Business, GroupedBusinesses } from '../types';
+
+const { url } = Astro;
+const searchParams = new URLSearchParams(url.search);
+const searchTerm = searchParams.get('search') || '';
+const categoryFilter = searchParams.get('category') || '';
+const provinceFilter = searchParams.get('province') || '';
+const cityFilter = searchParams.get('city') || '';
+
+// Fetch listings
+const listingsUrl = new URL('/api/listings', url.origin);
+listingsUrl.search = url.search;
+const listingsResponse = await fetch(listingsUrl);
+const businesses: Business[] | null = listingsResponse.ok ? await listingsResponse.json() : null;
+const error = listingsResponse.ok ? null : { message: `Failed to fetch listings: ${listingsResponse.statusText}` };
+
+
+// Fetch filters
+const filtersResponse = await fetch(new URL('/api/filters', url.origin));
+const { uniqueCategories, uniqueProvinces, provinceToCities } = filtersResponse.ok ? await filtersResponse.json() : { uniqueCategories: [], uniqueProvinces: [], provinceToCities: {} };
+
+const provinceToCitiesStr = JSON.stringify(provinceToCities);
+
+// Group businesses by province and city
+const groupedBusinesses: GroupedBusinesses = {};
+if (businesses) {
+  (businesses as Business[]).forEach((business: Business) => {
+    const province = business.province || 'Uncategorized';
+    const city = business.city || 'Uncategorized';
+    const key = `${province} > ${city}`;
+    if (!groupedBusinesses[key]) {
+      groupedBusinesses[key] = [];
+    }
+    groupedBusinesses[key].push(business);
+  });
+}
+---
+
+<Layout title="Directorio de Negocios">
+  <main class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-900">
+        <span class="material-symbols-outlined mr-2 align-middle">business</span>
+        Directorio de Negocios
+      </h1>
+    </div>
+
+    {/* Search and Filter Form */}
+    <form method="get" class="bg-white p-6 rounded-lg shadow-md mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div>
+          <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">search</span>
+            <input type="text" id="search" name="search" value={searchTerm} placeholder="Nombre o descripción del negocio" class="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+        </div>
+        <div>
+          <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+          <select id="category" name="category" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <option value="">Todas las Categorías</option>
+            {uniqueCategories.map((cat: string) => (
+              <option value={cat} selected={cat === categoryFilter}>{cat}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label for="province" class="block text-sm font-medium text-gray-700 mb-1">Provincia</label>
+          <select id="province" name="province" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <option value="">Todas las Provincias</option>
+            {uniqueProvinces.map((prov: string) => (
+              <option value={prov} selected={prov === provinceFilter}>{prov}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label for="city" class="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
+          <select id="city" name="city" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <option value="">Todas las Ciudades</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end mt-4 space-x-2">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center">
+          <span class="material-symbols-outlined mr-2">filter_list</span>
+          Filtrar
+        </button>
+        {(searchTerm || categoryFilter || provinceFilter || cityFilter) && (
+          <a href="/listings" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center">
+            <span class="material-symbols-outlined mr-2">clear</span>
+            Limpiar Filtros
+          </a>
+        )}
+      </div>
+    </form>
+
+    {error && <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">Error al cargar los negocios: {error.message}</div>}
+    {!error && Object.keys(groupedBusinesses).length === 0 && <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">No se encontraron negocios.</div>}
+    {!error && Object.keys(groupedBusinesses).map((group: string) => (
+      <section class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+          <span class="material-symbols-outlined mr-2">location_on</span>
+          {group}
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {groupedBusinesses[group].map((business: Business) => (
+            <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition duration-300 p-6">
+              <h3 class="text-xl font-semibold text-gray-900 mb-2">
+                <a href={`/business/${business.id}`} class="hover:text-blue-600">
+                  <span class="material-symbols-outlined mr-2 align-middle text-sm">store</span>
+                  {business.title}
+                </a>
+              </h3>
+              <p class="text-sm text-gray-600 mb-2"><strong>Categoría:</strong> {business.category}</p>
+              <p class="text-sm text-gray-600 mb-2"><strong>Dirección:</strong> {business.address}, {business.neighborhood}, {business.city}, {business.province} {business.zip}</p>
+              {business.phone && <p class="text-sm text-gray-600 mb-2"><strong>Teléfono:</strong> {business.phone}</p>}
+              {business.website && <p class="text-sm text-gray-600 mb-2"><strong>Sitio Web:</strong> <a href={business.website} class="text-blue-600 hover:underline">{business.website}</a></p>}
+              {business.rating && <p class="text-sm text-gray-600 mb-2"><strong>Puntuación:</strong> {business.rating} ({business.rating_count} reseñas)</p>}
+              <p class="text-sm text-gray-700">{business.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <a href="/add" class="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-md transition duration-300 mb-8">
+      <span class="material-symbols-outlined mr-2">add_business</span>
+      Añadir Nuevo Negocio
+    </a>
+  </main>
+</Layout>
+
+<script define:vars={{ provinceToCitiesStr }}>
+  const provinceSelect = document.getElementById('province');
+  const citySelect = document.getElementById('city');
+  const form = provinceSelect.closest('form');
+  const parsedProvinceToCities = JSON.parse(provinceToCitiesStr);
+
+  function updateCities() {
+    const selectedProvince = provinceSelect.value;
+    const currentCity = new URLSearchParams(window.location.search).get('city') || '';
+    citySelect.innerHTML = '<option value="">Todas las Ciudades</option>';
+    if (selectedProvince && parsedProvinceToCities[selectedProvince]) {
+      parsedProvinceToCities[selectedProvince].forEach((city) => {
+        const option = document.createElement('option');
+        option.value = city;
+        option.textContent = city;
+        if (city === currentCity) {
+          option.selected = true;
+        }
+        citySelect.appendChild(option);
+      });
+    }
+    // Clear city filter if province changes to different
+    if (selectedProvince && currentCity && !parsedProvinceToCities[selectedProvince].includes(currentCity)) {
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('city');
+      window.location.href = newUrl.toString();
+      return;
+    }
+  }
+
+  // Initial setup
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialProvince = urlParams.get('province') || '';
+  provinceSelect.value = initialProvince;
+  updateCities();
+
+  provinceSelect.addEventListener('change', () => {
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('province', provinceSelect.value);
+    newUrl.searchParams.delete('city');
+    window.location.href = newUrl.toString();
+  });
+
+  citySelect.addEventListener('change', () => {
+    const newUrl = new URL(window.location.href);
+    if (citySelect.value) {
+      newUrl.searchParams.set('city', citySelect.value);
+    } else {
+      newUrl.searchParams.delete('city');
+    }
+    window.location.href = newUrl.toString();
+  });
+</script>

@@ -1,0 +1,286 @@
+---
+import Layout from '../layouts/Layout.astro';
+import type { Business } from '../types';
+import Rating from '../components/Rating.astro';
+import { slugify } from '../utils/slugify';
+
+// Fetch all businesses
+const listingsResponse = await fetch(new URL('/api/listings', Astro.url.origin));
+const businesses: Business[] | null = listingsResponse.ok ? await listingsResponse.json() : null;
+const error = listingsResponse.ok ? null : { message: `Failed to fetch listings: ${listingsResponse.statusText}` };
+
+// Fetch unique provinces and cities for filters
+const filtersResponse = await fetch(new URL('/api/filters', Astro.url.origin));
+const { uniqueProvinces, provinceToCities } = filtersResponse.ok ? await filtersResponse.json() : { uniqueProvinces: [], provinceToCities: {} };
+
+const provinces = uniqueProvinces || [];
+const cities = provinceToCities ? Object.values(provinceToCities).flat() : [];
+
+const maptilerKey = import.meta.env.PUBLIC_MAPTILER_KEY;
+const timezone = import.meta.env.TIMEZONE || 'UTC';
+---
+
+<Layout title="Mapa de Negocios" hideFooter={true} removeBottomPadding={true} hideScrollToTop={true}>
+  <div class="container mx-auto max-w-6xl h-full">
+    <div class="flex h-full md:h-[calc(100vh-4rem)]">
+      {/* Columna de Listados y Filtros (Visible en mobile por defecto) */}
+      <div id="listings-column" class="w-full md:w-5/12 h-full overflow-y-auto p-4 border-r dark:border-gray-700">
+        <h1 class="text-2xl font-bold mb-4">Explorar Negocios</h1>
+        
+        {/* Filtros */}
+        <div class="flex space-x-2 mb-4">
+          <select id="province-filter" class="w-1/2 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600">
+            <option value="">Provincias</option>
+            {provinces.map((province: string) => <option value={province}>{province}</option>)}
+          </select>
+          <select id="city-filter" class="w-1/2 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600">
+            <option value="">Localidades</option>
+            {(cities as string[]).map((city: string) => <option value={city}>{city}</option>)}
+          </select>
+        </div>
+
+        {/* Listados */}
+        <div id="listings-container" class="space-y-2">
+        {businesses && businesses.map((business: Business) => (
+          <a href={`/${slugify(business.province || '')}/${slugify(business.city || '')}/${slugify(business.title)}`} class="block p-3 rounded-lg border dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">
+            <h3 class="font-semibold text-md dark:text-white">{business.title}</h3>
+            <div class="flex items-center text-xs text-gray-600 dark:text-gray-400 mt-1">
+              <span class="font-bold mr-1">{Number(business.rating).toFixed(1)}</span>
+              <Rating rating={business.rating || 0} />
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{business.category}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{business.city}, {business.province}</p>
+          </a>
+        ))}
+        </div>
+      </div>
+
+      {/* Columna del Mapa (Oculta en mobile por defecto) */}
+      <div id="map-column" class="w-full md:w-7/12 h-full relative hidden md:block">
+        <div id="map" class="absolute top-0 left-0 w-full h-full"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botones de Toggle para Móvil -->
+  <div class="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-10 flex space-x-2 bg-gray-900 bg-opacity-50 p-2 rounded-full">
+    <button id="show-list-btn" class="bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center">
+      <span class="material-symbols-outlined mr-2">list</span>
+      Lista
+    </button>
+    <button id="show-map-btn" class="bg-white text-gray-800 px-4 py-2 rounded-full shadow-lg flex items-center">
+      <span class="material-symbols-outlined mr-2">map</span>
+      Mapa
+    </button>
+  </div>
+</Layout>
+
+<script define:vars={{ businesses, provinceToCities, maptilerKey, timezone }}>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!maptilerKey || maptilerKey === 'YOUR_MAPTILER_API_KEY_HERE') {
+      document.getElementById('map').innerHTML = '<div class="flex items-center justify-center h-full bg-gray-200 dark:bg-gray-800"><p class="text-red-500 font-semibold">MapTiler API key is not configured. Please set it in the .env file.</p></div>';
+      return;
+    }
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: `https://api.maptiler.com/maps/streets/style.json?key=${maptilerKey}`,
+      center: [-70.1627, 18.7357], // Default center (Dominican Republic)
+      zoom: 7
+    });
+
+    // Force map to resize once the container is definitely visible
+    setTimeout(() => {
+      map.resize();
+    }, 100);
+
+    const provinceFilter = document.getElementById('province-filter');
+    const cityFilter = document.getElementById('city-filter');
+    const listingsContainer = document.getElementById('listings-container');
+    let markers = [];
+
+    function updateCityFilter() {
+      const selectedProvince = provinceFilter.value;
+      const citiesInProvince = provinceToCities[selectedProvince] || [];
+
+      cityFilter.innerHTML = '<option value="">Todas las Ciudades</option>'; // Reset
+      citiesInProvince.forEach(city => {
+        const option = document.createElement('option');
+        option.value = city;
+        option.textContent = city;
+        cityFilter.appendChild(option);
+      });
+    }
+
+    function updateListings() {
+      const provinceValue = provinceFilter.value;
+      const cityValue = cityFilter.value;
+
+      // Clear existing markers and listings
+      markers.forEach(marker => marker.remove());
+      markers = [];
+      listingsContainer.innerHTML = '';
+
+      // If no filter is selected, show a message and do nothing.
+      if (!provinceValue && !cityValue) {
+        listingsContainer.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 mt-4">Seleccione una provincia para comenzar.</p>';
+        return;
+      }
+
+      // Ensure businesses is an array before filtering
+      const safeBusinesses = Array.isArray(businesses) ? businesses : [];
+      const filteredBusinesses = safeBusinesses.filter(business => {
+        const provinceMatch = !provinceValue || business.province === provinceValue;
+        const cityMatch = !cityValue || business.city === cityValue;
+        return provinceMatch && cityMatch;
+      });
+
+      if (filteredBusinesses.length === 0) {
+        listingsContainer.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 mt-4">No se encontraron negocios.</p>';
+      } else {
+        const clientSlugify = (text) => {
+          if (!text) return '';
+          return text.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '').replace(/--+/g, '-');
+        };
+
+        listingsContainer.innerHTML = filteredBusinesses.map(business => {
+          const detailUrl = `/${clientSlugify(business.province)}/${clientSlugify(business.city)}/${clientSlugify(business.title)}`;
+          const stars = '<span class="text-yellow-500">' + '★'.repeat(Math.round(business.rating || 0)) + '</span>' + '<span class="text-gray-300">' + '☆'.repeat(5 - Math.round(business.rating || 0)) + '</span>';
+          
+          // Client-side status calculation
+          const now = new Date(new Date().toLocaleString("en-US", {timeZone: timezone}));
+          const dayOfWeek = now.toLocaleString('en-US', { weekday: 'long' }).toLowerCase();
+          const hoursToday = business[dayOfWeek];
+          let status = 'Cerrado';
+          if (hoursToday && hoursToday.toLowerCase() !== 'cerrado') {
+            const ranges = hoursToday.split(',');
+            for (const range of ranges) {
+              try {
+                const [openStr, closeStr] = range.split(/[-–]/).map(s => s.trim());
+                
+                const parseTime = (timeStr) => {
+                  const [time, modifier] = timeStr.split(' ');
+                  let [hours, minutes] = time.split(':').map(Number);
+                  if (modifier === 'PM' && hours < 12) {
+                    hours += 12;
+                  }
+                  if (modifier === 'AM' && hours === 12) {
+                    hours = 0;
+                  }
+                  return [hours, minutes];
+                };
+
+                const [openHour, openMinute] = parseTime(openStr);
+                const [closeHour, closeMinute] = parseTime(closeStr);
+
+                const openTime = new Date();
+                openTime.setHours(openHour, openMinute, 0, 0);
+
+                const closeTime = new Date();
+                closeTime.setHours(closeHour, closeMinute, 0, 0);
+
+                if (now >= openTime && now <= closeTime) {
+                  status = 'Abierto';
+                  break;
+                }
+              } catch (e) {
+                continue;
+              }
+            }
+          }
+          const statusColor = status === 'Abierto' ? 'text-green-600' : 'text-red-600';
+
+          return `
+            <div class="flex justify-between items-center p-3 rounded-lg border bg-white dark:bg-gray-800 dark:border-gray-700">
+              <a href="${detailUrl}" class="flex-grow">
+                <h3 class="font-semibold text-md dark:text-white">${business.title}</h3>
+                <div class="flex items-center text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  <span class="font-bold mr-1">${Number(business.rating).toFixed(1)}</span>
+                  ${stars}
+                  <span class="mx-2">•</span>
+                  <span class="${statusColor} font-semibold">${status}</span>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${business.category}</p>
+                <div class="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <span class="material-symbols-outlined mr-1 text-sm">location_on</span>
+                  <span>${business.city}, ${business.province}</span>
+                </div>
+              </a>
+              <div class="flex space-x-4 items-center ml-4">
+                ${business.website ? `<a href="${business.website}" target="_blank" class="flex flex-col items-center text-blue-600 hover:text-blue-800">
+                  <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-xl text-blue-600">language</span>
+                  </div>
+                  <span class="text-xs mt-1">Website</span>
+                </a>` : ''}
+                ${business.phone ? `<a href="tel:${business.phone}" class="flex flex-col items-center text-blue-600 hover:text-blue-800">
+                  <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-xl text-blue-600">call</span>
+                  </div>
+                  <span class="text-xs mt-1">Llamar</span>
+                </a>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Add new markers and fit map to bounds
+      const bounds = new maplibregl.LngLatBounds();
+      const clientSlugify = (text) => {
+        if (!text) return '';
+        return text.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '').replace(/--+/g, '-');
+      };
+      filteredBusinesses.forEach(business => {
+        if (business.latitude && business.longitude) {
+          const detailUrl = `/${clientSlugify(business.province)}/${clientSlugify(business.city)}/${clientSlugify(business.title)}`;
+          const popupContent = `
+            <div class="p-1">
+              <h6 class="font-semibold text-md mb-2">${business.title}</h6>
+              <a href="${detailUrl}" class="flex items-center text-blue-600 text-sm">
+                <span class="material-symbols-outlined mr-1 text-sm">info</span>
+                Ver detalles
+              </a>
+            </div>
+          `;
+          const marker = new maplibregl.Marker()
+            .setLngLat([business.longitude, business.latitude])
+            .setPopup(new maplibregl.Popup().setHTML(popupContent))
+            .addTo(map);
+          markers.push(marker);
+          bounds.extend([business.longitude, business.latitude]);
+        }
+      });
+
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+      }
+    }
+
+    provinceFilter.addEventListener('change', () => {
+      updateCityFilter();
+      updateListings();
+    });
+    cityFilter.addEventListener('change', updateListings);
+
+    // Mobile toggle logic
+    const listColumn = document.getElementById('listings-column');
+    const mapColumn = document.getElementById('map-column');
+    const showListBtn = document.getElementById('show-list-btn');
+    const showMapBtn = document.getElementById('show-map-btn');
+
+    showListBtn.addEventListener('click', () => {
+      listColumn.classList.remove('hidden');
+      mapColumn.classList.add('hidden');
+    });
+
+    showMapBtn.addEventListener('click', () => {
+      listColumn.classList.add('hidden');
+      mapColumn.classList.remove('hidden');
+      map.resize(); // Important: resize map when it becomes visible
+    });
+
+    // Initial load
+    updateListings();
+  });
+</script>

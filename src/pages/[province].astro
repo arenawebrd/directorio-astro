@@ -1,0 +1,62 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { slugify } from '../utils/slugify';
+import type { Business } from '../types';
+import { getFilters } from '../lib/db';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const { provinceToCities } = await getFilters();
+
+  const provinceData: Record<string, { name: string; cities: Set<string> }> = {};
+  if (provinceToCities) {
+    for (const provinceName in provinceToCities) {
+      const provinceSlug = slugify(provinceName);
+      if (!provinceData[provinceSlug]) {
+        provinceData[provinceSlug] = { name: provinceName, cities: new Set() };
+      }
+      provinceToCities[provinceName].forEach((city: string) => {
+        provinceData[provinceSlug].cities.add(city);
+      });
+    }
+  }
+
+  return Object.keys(provinceData).map(provinceSlug => ({
+    params: { province: provinceSlug },
+    props: {
+      provinceName: provinceData[provinceSlug].name,
+      cities: Array.from(provinceData[provinceSlug].cities).sort(),
+    },
+  }));
+}
+
+const { provinceName, cities } = Astro.props;
+const { province: provinceParam } = Astro.params;
+---
+
+<Layout title={provinceName}>
+  <div class="container mx-auto max-w-6xl px-4 py-8">
+    <nav class="mb-6 flex items-center text-sm text-gray-600">
+      <a href="/" class="text-blue-600 hover:underline">Inicio</a>
+      <span class="mx-2">></span>
+      <span>{provinceName}</span>
+    </nav>
+
+    <h1 class="text-3xl font-bold mb-6">{provinceName}</h1>
+    <h2 class="text-2xl font-semibold mb-4">Ciudades</h2>
+
+    {cities && cities.length > 0 ? (
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {cities.map((city: string) => (
+          <a href={`/${provinceParam}/${slugify(city)}/`} class="flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-shadow">
+            <span class="material-symbols-outlined text-2xl text-blue-600 mr-3">location_city</span>
+            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-200">{city}</h3>
+          </a>
+        ))}
+      </div>
+    ) : (
+      <p>No se encontraron ciudades para esta provincia.</p>
+    )}
+  </div>
+</Layout>

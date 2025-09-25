@@ -1,0 +1,48 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { slugify } from '../utils/slugify';
+import { getFilters } from '../lib/db';
+
+export const prerender = true;
+
+const { provinceToCities } = await getFilters();
+
+const provinceData: Record<string, Set<string>> = {};
+if (provinceToCities) {
+  for (const provinceName in provinceToCities) {
+    provinceData[provinceName] = new Set(provinceToCities[provinceName]);
+  }
+}
+
+const provinces = Object.keys(provinceData || {}).sort();
+---
+
+<Layout title="Provincias de República Dominicana">
+  <div class="container mx-auto max-w-6xl px-4 py-8">
+    <nav class="mb-6 flex items-center text-sm text-gray-600">
+      <a href="/" class="text-blue-600 flex items-center">
+        <span class="material-symbols-outlined mr-1 text-sm">home</span>
+        Inicio
+      </a>
+      <span class="material-symbols-outlined mx-2 text-xs">chevron_right</span>
+      <span class="flex items-center">
+        <span class="material-symbols-outlined mr-1 text-sm">public</span>
+        Provincias
+      </span>
+    </nav>
+    <h1 class="text-3xl font-bold mb-6">Explorar por Provincia</h1>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {provinces.map(province => (
+        <a href={`/${slugify(province)}`} class="block p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-shadow">
+          <div class="flex flex-col md:flex-row items-center text-center md:text-left">
+            <span class="material-symbols-outlined text-4xl text-blue-600 md:mr-3">location_on</span>
+            <div class="mt-2 md:mt-0">
+              <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200">{province}</h2>
+              <p class="text-sm text-gray-500 dark:text-gray-400">{(provinceData && provinceData[province]?.size) || 0} localidades</p>
+            </div>
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+</Layout>

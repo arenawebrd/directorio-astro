@@ -1,0 +1,64 @@
+---
+import { slugify } from '../utils/slugify';
+
+const filtersResponse = await fetch(new URL('/api/filters', Astro.url.origin));
+const { provinceToCities, error } = filtersResponse.ok ? await filtersResponse.json() : { provinceToCities: {}, error: { message: `Failed to fetch filters: ${filtersResponse.statusText}` } };
+
+const locationData = provinceToCities || {};
+---
+
+<div class="mt-8 w-full md:max-w-2xl mx-auto px-4">
+  <div class="flex flex-col md:flex-row gap-4">
+    <select id="province-select" class="w-full p-3 rounded-lg border border-gray-300 text-gray-700">
+      <option value="">Selecciona una provincia</option>
+      {Object.keys(locationData).sort().map((province: string) => (
+        <option value={province}>{province}</option>
+      ))}
+    </select>
+    <select id="city-select" class="w-full p-3 rounded-lg border border-gray-300 text-gray-700" disabled>
+      <option value="">Selecciona una localidad</option>
+    </select>
+  </div>
+</div>
+
+<script define:vars={{ locationData }}>
+  const provinceSelect = document.getElementById('province-select');
+  const citySelect = document.getElementById('city-select');
+
+  function slugify(text) {
+    return text
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w-]+/g, '')
+      .replace(/--+/g, '-');
+  }
+
+  provinceSelect.addEventListener('change', (e) => {
+    const selectedProvince = e.target.value;
+    
+    citySelect.innerHTML = '<option value="">Selecciona una localidad</option>';
+    citySelect.disabled = true;
+
+    if (selectedProvince && locationData[selectedProvince]) {
+      locationData[selectedProvince].sort().forEach(city => {
+        const option = document.createElement('option');
+        option.value = city;
+        option.textContent = city;
+        citySelect.appendChild(option);
+      });
+      citySelect.disabled = false;
+    }
+  });
+
+  citySelect.addEventListener('change', (e) => {
+    const province = provinceSelect.value;
+    const city = e.target.value;
+    if (province && city) {
+      window.location.href = `/${slugify(province)}/${slugify(city)}`;
+    }
+  });
+</script>

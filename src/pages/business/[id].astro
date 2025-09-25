@@ -1,0 +1,163 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import type { Business } from '../../types';
+import { getImageUrl } from '../../utils/images';
+
+export async function getStaticPaths() {
+  const listingsResponse = await fetch('http://localhost:4321/api/listings');
+  if (!listingsResponse.ok) {
+    console.error('Error fetching business IDs:', await listingsResponse.text());
+    return [];
+  }
+
+  const businesses = await listingsResponse.json();
+
+  return businesses.map((business: Business) => ({
+    params: { id: business.place_id },
+    props: { business },
+  }));
+}
+
+const { business }: { business: Business } = Astro.props;
+
+if (!business) {
+  return Astro.redirect('/listings');
+}
+
+const imageUrl = getImageUrl(business.featured_image || '');
+---
+
+<Layout title={business.title}>
+  <main class="content-wrapper px-4 py-8">
+    <div class="flex items-center mb-8">
+      <a href="/listings" class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium">
+        <span class="material-symbols-outlined mr-2">arrow_back</span>
+        Volver a los listados
+      </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-8">
+      <div class="flex flex-col md:flex-row gap-6 mb-8">
+        <div class="flex-shrink-0">
+          {imageUrl ? (
+            <img src={imageUrl} alt={business.title} class="w-64 h-48 object-cover rounded-lg" />
+          ) : (
+            <div class="w-64 h-48 bg-gray-200 rounded-lg flex items-center justify-center">
+              <span class="text-gray-500">No hay imagen disponible</span>
+            </div>
+          )}
+        </div>
+        <div class="flex-1">
+          <h1 class="text-3xl font-bold text-gray-900 mb-2 flex items-center">
+            <span class="material-symbols-outlined mr-2 text-2xl">store</span>
+            {business.title}
+          </h1>
+          {business.rating && (
+            <div class="flex items-center mb-4">
+              <span class="material-symbols-outlined mr-1 text-yellow-500">star</span>
+              <span class="text-lg font-semibold text-gray-900">{business.rating}</span>
+              <span class="text-sm text-gray-600 ml-1">({business.rating_count} reseñas)</span>
+            </div>
+          )}
+          {business.category && (
+            <div class="flex items-center mb-4">
+              <span class="material-symbols-outlined mr-2 text-sm">category</span>
+              <span class="text-sm text-gray-600">{business.category}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <span class="material-symbols-outlined mr-2">description</span>
+            Descripción
+          </h2>
+          <p class="text-gray-700 leading-relaxed">{business.description}</p>
+        </div>
+
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <span class="material-symbols-outlined mr-2">location_on</span>
+            Ubicación
+          </h2>
+          <p class="text-gray-700 mb-2"><strong>Dirección:</strong> {business.address}, {business.neighborhood}, {business.city}, {business.province} {business.zip}, {business.country_code}</p>
+          {business.map_url && (
+            <p class="mb-2">
+              <a href={business.map_url} target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-blue-600 hover:text-blue-800">
+                <span class="material-symbols-outlined mr-1">map</span>
+                Ver en el mapa
+              </a>
+            </p>
+          )}
+          {business.latitude && business.longitude && (
+            <p class="text-sm text-gray-600">Coordenadas: {business.latitude}, {business.longitude}</p>
+          )}
+        </div>
+
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <span class="material-symbols-outlined mr-2">phone</span>
+            Contacto
+          </h2>
+          {business.phone && <p class="text-gray-700 mb-2"><strong>Teléfono:</strong> {business.phone}</p>}
+          {business.website && (
+            <p class="mb-2">
+              <a href={business.website} target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-blue-600 hover:text-blue-800">
+                <span class="material-symbols-outlined mr-1">language</span>
+                {business.website}
+              </a>
+            </p>
+          )}
+        </div>
+
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <span class="material-symbols-outlined mr-2">access_time</span>
+            Horario
+          </h2>
+          <ul class="space-y-1 text-sm">
+            <li><strong>Lunes:</strong> {business.monday || 'Cerrado'}</li>
+            <li><strong>Martes:</strong> {business.tuesday || 'Cerrado'}</li>
+            <li><strong>Miércoles:</strong> {business.wednesday || 'Cerrado'}</li>
+            <li><strong>Jueves:</strong> {business.thursday || 'Cerrado'}</li>
+            <li><strong>Viernes:</strong> {business.friday || 'Cerrado'}</li>
+            <li><strong>Sábado:</strong> {business.saturday || 'Cerrado'}</li>
+            <li><strong>Domingo:</strong> {business.sunday || 'Cerrado'}</li>
+          </ul>
+        </div>
+      </div>
+
+      {business.attributes && (
+        <div class="mt-8">
+          <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <span class="material-symbols-outlined mr-2">tune</span>
+            Atributos
+          </h2>
+          <pre class="bg-gray-100 p-4 rounded-md overflow-x-auto text-sm">{JSON.stringify(business.attributes, null, 2)}</pre>
+        </div>
+      )}
+
+      {business.place_topics && (
+        <div class="mt-8">
+          <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <span class="material-symbols-outlined mr-2">label</span>
+            Temas del lugar
+          </h2>
+          <pre class="bg-gray-100 p-4 rounded-md overflow-x-auto text-sm">{JSON.stringify(business.place_topics, null, 2)}</pre>
+        </div>
+      )}
+
+      {business.people_also_search && (
+        <div class="mt-8">
+          <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <span class="material-symbols-outlined mr-2">search</span>
+            La gente también busca
+          </h2>
+          <pre class="bg-gray-100 p-4 rounded-md overflow-x-auto text-sm">{JSON.stringify(business.people_also_search, null, 2)}</pre>
+        </div>
+      )}
+    </div>
+  </main>
+</Layout>

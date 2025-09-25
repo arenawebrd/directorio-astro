@@ -1,0 +1,28 @@
+---
+// src/components/Map.astro
+interface Props {
+  latitude: number;
+  longitude: number;
+}
+
+const { latitude, longitude } = Astro.props;
+---
+
+<div id="map" style="height: 450px;" class="rounded-lg"></div>
+
+<script define:vars={{ latitude, longitude }} type="module">
+  if (window.maplibregl) {
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+    center: [longitude, latitude],
+      zoom: 14
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    new maplibregl.Marker()
+      .setLngLat([longitude, latitude])
+      .addTo(map);
+  }
+</script>

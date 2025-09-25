@@ -1,0 +1,23 @@
+---
+// src/components/Rating.astro
+interface Props {
+  rating: number;
+}
+
+const { rating } = Astro.props;
+const stars = Array.from({ length: 5 }, (_, i) => {
+  const fill = Math.max(0, Math.min(1, (rating || 0) - i));
+  return `'FILL' ${fill}`;
+});
+---
+
+<div class="flex items-center">
+  {stars.map(style => (
+    <span
+      class="material-symbols-outlined text-yellow-500 text-sm"
+      style={`font-variation-settings: ${style}`}
+    >
+      star
+    </span>
+  ))}
+</div>

@@ -1,0 +1,182 @@
+---
+import Layout from '../layouts/Layout.astro';
+import type { Business } from '../types';
+---
+
+<Layout title="Añadir Nuevo Negocio">
+  <main class="container mx-auto px-4 py-8 max-w-2xl">
+    <div class="flex items-center mb-8">
+      <a href="/listings" class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium">
+        <span class="material-symbols-outlined mr-2">arrow_back</span>
+        Volver a Listados
+      </a>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <h1 class="text-3xl font-bold text-gray-900 mb-6 flex items-center">
+        <span class="material-symbols-outlined mr-2">add_business</span>
+        Añadir Nuevo Negocio
+      </h1>
+
+      <form method="post" action="/api/add-business" enctype="multipart/form-data" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Título *</label>
+            <input type="text" id="title" name="title" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Categoría *</label>
+            <input type="text" id="category" name="category" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+            <textarea id="description" name="description" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"></textarea>
+          </div>
+
+          <div>
+            <label for="province" class="block text-sm font-medium text-gray-700 mb-1">Provincia *</label>
+            <input type="text" id="province" name="province" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="city" class="block text-sm font-medium text-gray-700 mb-1">Ciudad *</label>
+            <input type="text" id="city" name="city" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Dirección *</label>
+            <input type="text" id="address" name="address" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="neighborhood" class="block text-sm font-medium text-gray-700 mb-1">Barrio</label>
+            <input type="text" id="neighborhood" name="neighborhood" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="zip" class="block text-sm font-medium text-gray-700 mb-1">Código Postal</label>
+            <input type="text" id="zip" name="zip" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="country_code" class="block text-sm font-medium text-gray-700 mb-1">Código de País</label>
+            <input type="text" id="country_code" name="country_code" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+            <input type="tel" id="phone" name="phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="website" class="block text-sm font-medium text-gray-700 mb-1">Sitio Web</label>
+            <input type="url" id="website" name="website" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="map_url" class="block text-sm font-medium text-gray-700 mb-1">URL del Mapa</label>
+            <input type="url" id="map_url" name="map_url" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="attributes" class="block text-sm font-medium text-gray-700 mb-1">Atributos (JSON)</label>
+            <textarea id="attributes" name="attributes" rows="3" placeholder='{"key": "value"}' class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"></textarea>
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="place_topics" class="block text-sm font-medium text-gray-700 mb-1">Temas del Lugar (JSON)</label>
+            <textarea id="place_topics" name="place_topics" rows="3" placeholder='["topic1", "topic2"]' class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"></textarea>
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="people_also_search" class="block text-sm font-medium text-gray-700 mb-1">La Gente También Busca (JSON)</label>
+            <textarea id="people_also_search" name="people_also_search" rows="3" placeholder='["search1", "search2"]' class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"></textarea>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-4">Horario</label>
+            <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
+              <div>
+                <label for="monday" class="block text-xs font-medium text-gray-600 mb-1">Lunes</label>
+                <input type="text" id="monday" name="monday" placeholder="09:00-18:00" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs" />
+              </div>
+              <div>
+                <label for="tuesday" class="block text-xs font-medium text-gray-600 mb-1">Martes</label>
+                <input type="text" id="tuesday" name="tuesday" placeholder="09:00-18:00" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs" />
+              </div>
+              <div>
+                <label for="wednesday" class="block text-xs font-medium text-gray-600 mb-1">Miércoles</label>
+                <input type="text" id="wednesday" name="wednesday" placeholder="09:00-18:00" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs" />
+              </div>
+              <div>
+                <label for="thursday" class="block text-xs font-medium text-gray-600 mb-1">Jueves</label>
+                <input type="text" id="thursday" name="thursday" placeholder="09:00-18:00" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs" />
+              </div>
+              <div>
+                <label for="friday" class="block text-xs font-medium text-gray-600 mb-1">Viernes</label>
+                <input type="text" id="friday" name="friday" placeholder="09:00-18:00" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs" />
+              </div>
+              <div>
+                <label for="saturday" class="block text-xs font-medium text-gray-600 mb-1">Sábado</label>
+                <input type="text" id="saturday" name="saturday" placeholder="Cerrado" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs" />
+              </div>
+              <div>
+                <label for="sunday" class="block text-xs font-medium text-gray-600 mb-1">Domingo</label>
+                <input type="text" id="sunday" name="sunday" placeholder="Cerrado" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="latitude" class="block text-sm font-medium text-gray-700 mb-1">Latitud</label>
+            <input type="number" id="latitude" name="latitude" step="any" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="longitude" class="block text-sm font-medium text-gray-700 mb-1">Longitud</label>
+            <input type="number" id="longitude" name="longitude" step="any" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="rating" class="block text-sm font-medium text-gray-700 mb-1">Puntuación (0-5)</label>
+            <input type="number" id="rating" name="rating" min="0" max="5" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label for="rating_count" class="block text-sm font-medium text-gray-700 mb-1">Cantidad de Puntuaciones</label>
+            <input type="number" id="rating_count" name="rating_count" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="place_id" class="block text-sm font-medium text-gray-700 mb-1">ID del Lugar</label>
+            <input type="text" id="place_id" name="place_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="feature_id" class="block text-sm font-medium text-gray-700 mb-1">ID de Característica</label>
+            <input type="text" id="feature_id" name="feature_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="featured_image" class="block text-sm font-medium text-gray-700 mb-1">Imagen Destacada</label>
+            <input type="file" id="featured_image" name="featured_image" accept="image/*" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="logo" class="block text-sm font-medium text-gray-700 mb-1">Logo</label>
+            <input type="file" id="logo" name="logo" accept="image/*" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+        </div>
+
+        <div class="md:col-span-2">
+          <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-md transition duration-300 flex items-center justify-center">
+            <span class="material-symbols-outlined mr-2">save</span>
+            Añadir Negocio
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+</Layout>

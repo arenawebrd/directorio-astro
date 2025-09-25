@@ -1,0 +1,57 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Contacto" removeBottomPadding={true}>
+  <div class="container mx-auto max-w-6xl px-4 py-8">
+    <nav class="mb-6 flex items-center text-sm text-gray-600">
+      <a href="/" class="text-blue-600 hover:underline">Inicio</a>
+      <span class="mx-2">></span>
+      <span>Contacto</span>
+    </nav>
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
+      <h1 class="text-3xl font-bold mb-6">Ponte en Contacto</h1>
+      <div class="grid md:grid-cols-2 gap-8">
+      <div>
+        <h2 class="text-2xl font-semibold mb-4">Envíanos un Mensaje</h2>
+        <form action="#" method="POST" class="space-y-4">
+          <div>
+            <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre</label>
+            <input type="text" id="name" name="name" class="mt-1 block w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+            <input type="email" id="email" name="email" class="mt-1 block w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <div>
+            <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Mensaje</label>
+            <textarea id="message" name="message" rows="4" class="mt-1 block w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"></textarea>
+          </div>
+          <div>
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">
+              Enviar Mensaje
+            </button>
+          </div>
+        </form>
+      </div>
+      <div>
+        <h2 class="text-2xl font-semibold mb-4">Nuestra Información</h2>
+        <div class="space-y-4 text-gray-700 dark:text-gray-300">
+          <p class="flex items-center">
+            <span class="material-symbols-outlined mr-3">location_on</span>
+            123 Calle Principal, Santo Domingo, RD
+          </p>
+          <p class="flex items-center">
+            <span class="material-symbols-outlined mr-3">call</span>
+            (809) 555-1234
+          </p>
+          <p class="flex items-center">
+            <span class="material-symbols-outlined mr-3">mail</span>
+            contacto@directoriord.com
+          </p>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</Layout>

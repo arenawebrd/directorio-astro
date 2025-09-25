@@ -1,0 +1,62 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Search from '../components/Search.astro';
+import { slugify } from '../utils/slugify';
+import { getFilters } from '../lib/db';
+
+// Fetch all listings to get province and city data
+const { provinceToCities } = await getFilters();
+
+// Create an array of unique provinces with their city counts
+const uniqueProvinces = provinceToCities ? Object.entries(provinceToCities as Record<string, string[]>).map(([province, cities]) => ({
+  name: province,
+  cityCount: cities.length,
+})) : [];
+
+// Sort provinces alphabetically by name
+uniqueProvinces.sort((a, b) => a.name.localeCompare(b.name));
+---
+
+<Layout title="Directorio de Negocios">
+  <!-- Hero Section -->
+  <div class="relative bg-cover bg-center min-h-[650px] flex items-center justify-center text-white" style="background-image: url('/assets/hero-section.jpg');">
+    <div class="absolute inset-0 bg-black opacity-50"></div>
+    <div class="relative z-10 text-center w-full">
+      <h1 class="text-5xl font-extrabold mb-3">Directorio de Negocios</h1>
+      <p class="text-lg">Encuentra y descubre negocios locales cerca de ti.</p>
+      <Search />
+    </div>
+  </div>
+
+  <div class="bg-gray-50 py-8">
+    <div class="content-wrapper px-4">
+      <h2 class="text-2xl font-bold text-gray-800 mb-8 text-center">Buscar por Provincia</h2>
+
+      {uniqueProvinces.length === 0 && (
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+          <p class="font-bold">No se encontraron provincias</p>
+          <p>Añade negocios con provincia para habilitar la búsqueda.</p>
+        </div>
+      )}
+
+    <div class="max-w-6xl mx-auto">
+      <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {uniqueProvinces.map((province) => (
+          <a
+            href={`/${slugify(province.name)}/`}
+            class="border rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow block flex flex-col items-center justify-center text-center bg-white dark:bg-gray-800"
+          >
+            <span class="material-symbols-outlined text-4xl mb-1 text-gray-600 dark:text-gray-300">location_on</span>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+              {province.name}
+            </h3>
+            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+              {province.cityCount} {province.cityCount === 1 ? 'Localidad' : 'Localidades'}
+            </p>
+          </a>
+        ))}
+      </div>
+    </div>
+    </div>
+  </div>
+</Layout>

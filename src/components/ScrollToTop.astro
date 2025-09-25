@@ -1,0 +1,82 @@
+---
+// src/components/ScrollToTop.astro
+---
+<button id="scroll-to-top" class="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center bg-white dark:bg-gray-800 transition-opacity duration-300 opacity-0 pointer-events-none">
+  <svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
+    <circle
+      class="text-gray-200 dark:text-gray-700"
+      cx="18"
+      cy="18"
+      r="16"
+      fill="none"
+      stroke-width="2.5"
+    ></circle>
+    <circle
+      id="progress-ring"
+      class="text-blue-600"
+      cx="18"
+      cy="18"
+      r="16"
+      fill="none"
+      stroke-width="2.5"
+      stroke-linecap="round"
+    ></circle>
+  </svg>
+  <span class="absolute material-symbols-outlined text-blue-600 dark:text-white">arrow_upward</span>
+</button>
+
+<style>
+  #scroll-to-top.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+</style>
+
+<script>
+  let cleanup: (() => void) | undefined;
+
+  function setupScrollToTop() {
+    const button = document.getElementById('scroll-to-top');
+    const progressRing = document.getElementById('progress-ring');
+    if (!button || !progressRing) return;
+
+    const radius = (progressRing as any).r.baseVal.value;
+    const circumference = 2 * Math.PI * radius;
+    progressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+
+      if (scrollTop > 200) {
+        button.classList.add('visible');
+      } else {
+        button.classList.remove('visible');
+      }
+
+      const scrollPercent = scrollable > 0 ? (scrollTop / scrollable) : 0;
+      const offset = circumference - scrollPercent * circumference;
+      progressRing.style.strokeDashoffset = offset.toString();
+    };
+
+    const handleClick = () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    button.addEventListener('click', handleClick);
+    handleScroll(); // Set initial state
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      button.removeEventListener('click', handleClick);
+    };
+  }
+
+  document.addEventListener('astro:page-load', () => {
+    if (cleanup) cleanup();
+    cleanup = setupScrollToTop();
+  });
+
+  cleanup = setupScrollToTop(); // Initial load
+</script>

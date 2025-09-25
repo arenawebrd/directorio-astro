@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-200;
+}
+
+.content-wrapper {
+  max-width: 1140px;
+  margin-left: auto;
+  margin-right: auto;
+}

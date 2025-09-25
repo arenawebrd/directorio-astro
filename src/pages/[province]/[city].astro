@@ -1,0 +1,149 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { slugify } from '../../utils/slugify';
+import type { Business } from '../../types';
+import Rating from '../../components/Rating.astro';
+import { getFilters, getListingsByCity } from '../../lib/db';
+
+export const prerender = true;
+
+function getOpenStatus(business: Business): 'Abierto' | 'Cerrado' {
+  const timezone = import.meta.env.TIMEZONE || 'UTC';
+  const now = new Date(new Date().toLocaleString("en-US", {timeZone: timezone}));
+  const dayOfWeek = now.toLocaleString('en-US', { weekday: 'long' }).toLowerCase();
+  const hoursToday = business[dayOfWeek as keyof Business] as string;
+
+  if (!hoursToday || hoursToday.toLowerCase() === 'cerrado') {
+    return 'Cerrado';
+  }
+
+  const ranges = hoursToday.split(',');
+  for (const range of ranges) {
+    try {
+      const [openStr, closeStr] = range.split(/[-–]/).map(s => s.trim());
+      
+      const parseTime = (timeStr: string) => {
+        const [time, modifier] = timeStr.split(' ');
+        let [hours, minutes] = time.split(':').map(Number);
+        if (modifier === 'PM' && hours < 12) {
+          hours += 12;
+        }
+        if (modifier === 'AM' && hours === 12) {
+          hours = 0;
+        }
+        return [hours, minutes];
+      };
+
+      const [openHour, openMinute] = parseTime(openStr);
+      const [closeHour, closeMinute] = parseTime(closeStr);
+
+      const openTime = new Date();
+      openTime.setHours(openHour, openMinute, 0, 0);
+
+      const closeTime = new Date();
+      closeTime.setHours(closeHour, closeMinute, 0, 0);
+
+      if (now >= openTime && now <= closeTime) {
+        return 'Abierto';
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+
+  return 'Cerrado';
+}
+
+export async function getStaticPaths() {
+  const { provinceToCities } = await getFilters();
+  const paths: any[] = [];
+  if (provinceToCities) {
+    for (const provinceName in provinceToCities) {
+      provinceToCities[provinceName].forEach((cityName: string) => {
+        paths.push({
+          params: { province: slugify(provinceName), city: slugify(cityName) },
+          props: { provinceName, cityName },
+        });
+      });
+    }
+  }
+  return paths;
+}
+
+const { provinceName, cityName } = Astro.props;
+const { province: provinceParam } = Astro.params;
+
+const businesses: Business[] = await getListingsByCity(cityName);
+---
+
+<Layout title={`${cityName}, ${provinceName}`}>
+  <div class="container mx-auto max-w-6xl px-4 py-8">
+    <nav class="mb-6 flex items-center text-sm text-gray-600">
+      <a href="/" class="text-blue-600 flex items-center">Inicio</a>
+      <span class="mx-2">></span>
+      <a href={`/${slugify(provinceName)}/`} class="text-blue-600 flex items-center">{provinceName}</a>
+      <span class="mx-2">></span>
+      <span>{cityName}</span>
+    </nav>
+    
+    <h1 class="text-3xl font-bold mb-6">{cityName}</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {businesses && businesses.map((business: Business) => {
+        const status = getOpenStatus(business);
+        const detailUrl = `/${provinceParam}/${slugify(business.city || '')}/${slugify(business.title)}`;
+        return (
+          <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-shadow p-4">
+            <div class="flex items-start">
+              <div class="flex-grow">
+                <a href={detailUrl}>
+                  <h3 class="font-semibold text-md dark:text-white">{business.title}</h3>
+                  <div class="flex items-center text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    <span class="font-bold mr-1">{Number(business.rating).toFixed(1)}</span>
+                    <Rating rating={business.rating || 0} />
+                    <span class="mx-2">•</span>
+                    <span class:list={['font-semibold', status === 'Abierto' ? 'text-green-600' : 'text-red-600']}>
+                      {status}
+                    </span>
+                  </div>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{business.category}</p>
+              <div class="flex items-start text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <span class="material-symbols-outlined mr-1 text-sm">location_on</span>
+                <span>{business.address}</span>
+              </div>
+              {business.phone && (
+                    <div class="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <span class="material-symbols-outlined mr-1 text-sm">call</span>
+                      <span>{business.phone}</span>
+                    </div>
+                  )}
+                <div class="flex items-center text-xs text-indigo-600 dark:text-indigo-400 mt-2">
+                  <span class="material-symbols-outlined mr-1 text-sm">info</span>
+                  <span>Ver detalles</span>
+                </div>
+                </a>
+              </div>
+              <div class="ml-4 flex-shrink-0 w-16 h-16 rounded-md bg-gray-200 flex items-center justify-center">
+                {business.featured_image ? (
+                  <img 
+                    src={business.featured_image} 
+                    alt={business.title} 
+                    class="w-full h-full rounded-md object-cover"
+                    onerror="this.style.display='none'; this.parentElement.querySelector('.placeholder-icon').style.display='flex';"
+                  />
+                  <div class="w-full h-full items-center justify-center placeholder-icon" style="display: none;">
+                    <span class="material-symbols-outlined text-4xl text-gray-400">store</span>
+                  </div>
+                ) : (
+                  <div class="w-full h-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-4xl text-gray-400">store</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  </div>
+</Layout>

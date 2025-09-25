@@ -1,0 +1,288 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import type { Business } from '../../../types';
+import { slugify } from '../../../utils/slugify';
+import Rating from '../../../components/Rating.astro';
+import Map from '../../../components/Map.astro';
+import { getListings } from '../../../lib/db';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const businesses = await getListings();
+
+  return businesses.map((business: Business) => ({
+    params: {
+      province: slugify(business.province || ''),
+      city: slugify(business.city || ''),
+      business: slugify(business.title),
+    },
+    props: { business },
+  }));
+}
+
+const { business }: { business: Business } = Astro.props;
+
+if (!business) {
+  return new Response(null, {
+    status: 404,
+    statusText: 'Not Found'
+  });
+}
+
+function getOpeningStatus(business: Business) {
+  const timezone = import.meta.env.TIMEZONE || 'UTC';
+  const now = new Date(new Date().toLocaleString("en-US", {timeZone: timezone}));
+  const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayOfWeek = weekdays[now.getDay()];
+  const hoursString = business[dayOfWeek as keyof Business] as string;
+
+  console.log({
+    now,
+    hoursString,
+    dayOfWeek,
+  });
+
+  if (!hoursString || hoursString.toLowerCase() === 'cerrado') {
+    return { text: 'Cerrado', color: 'text-red-500' };
+  }
+
+  const ranges = hoursString.split(',');
+  for (const range of ranges) {
+    try {
+      const [startStr, endStr] = range.split(/[-–]/).map(s => s.trim());
+      
+      const parseTime = (timeStr: string) => {
+        const [time, modifier] = timeStr.split(' ');
+        let [hours, minutes] = time.split(':').map(Number);
+        if (modifier === 'PM' && hours < 12) {
+          hours += 12;
+        }
+        if (modifier === 'AM' && hours === 12) {
+          hours = 0;
+        }
+        return [hours, minutes];
+      };
+
+      const [startHour, startMinute] = parseTime(startStr);
+      const [endHour, endMinute] = parseTime(endStr);
+
+      const startTime = new Date();
+      startTime.setHours(startHour, startMinute, 0, 0);
+
+      const endTime = new Date();
+      endTime.setHours(endHour, endMinute, 0, 0);
+
+      if (now >= startTime && now <= endTime) {
+        return { text: 'Abierto', color: 'text-green-500' };
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+
+  return { text: 'Cerrado', color: 'text-red-500' };
+}
+
+const openingStatus = getOpeningStatus(business);
+
+const allAttributes: { name: string; available: boolean }[] = [];
+if (business.attributes) {
+  if (business.attributes.available_attributes) {
+    for (const category in business.attributes.available_attributes) {
+      for (const attr of business.attributes.available_attributes[category]) {
+        allAttributes.push({ name: attr.replace(/_/g, ' '), available: true });
+      }
+    }
+  }
+  if (business.attributes.unavailable_attributes) {
+    for (const category in business.attributes.unavailable_attributes) {
+      for (const attr of business.attributes.unavailable_attributes[category]) {
+        allAttributes.push({ name: attr.replace(/_/g, ' '), available: false });
+      }
+    }
+  }
+}
+
+let placeTopics = {};
+if (business.place_topics && typeof business.place_topics === 'string') {
+  try {
+    placeTopics = JSON.parse(business.place_topics);
+  } catch (e) {
+    console.error("Failed to parse place_topics JSON:", e);
+  }
+} else if (business.place_topics) {
+  placeTopics = business.place_topics;
+}
+---
+
+<Layout title={business.title}>
+  <div class="bg-white dark:bg-gray-900">
+    <main class="container mx-auto max-w-6xl px-4 py-8">
+      <nav class="mb-6 text-sm text-gray-600 dark:text-gray-400" aria-label="Breadcrumb">
+        <ol class="list-none p-0 inline-flex items-center flex-wrap">
+          <li class="flex items-center">
+            <a href="/" class="hover:text-gray-800 dark:hover:text-gray-200">Inicio</a>
+            <span class="material-symbols-outlined mx-2 text-xs">chevron_right</span>
+          </li>
+          <li class="flex items-center">
+            <a href={`/${slugify(business.province || '')}`} class="hover:text-gray-800 dark:hover:text-gray-200">{business.province}</a>
+            <span class="material-symbols-outlined mx-2 text-xs">chevron_right</span>
+          </li>
+          <li class="flex items-center">
+            <a href={`/${slugify(business.province || '')}/${slugify(business.city || '')}`} class="hover:text-gray-800 dark:hover:text-gray-200">{business.city}</a>
+            <span class="material-symbols-outlined mx-2 text-xs">chevron_right</span>
+          </li>
+          <li aria-current="page">
+            <span class="font-medium text-gray-800 dark:text-gray-200">{business.title}</span>
+          </li>
+        </ol>
+      </nav>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-7">
+          {business.featured_image && (
+            <div class="relative h-64 md:h-[350px] rounded-lg overflow-hidden mb-8">
+              <img src={business.featured_image} alt={business.title} class="w-full h-full object-cover" onerror="this.parentElement.style.display='none'" />
+            </div>
+          )}
+          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 relative">
+            <div>
+              <h1 class="text-[32px] font-bold text-gray-900 dark:text-white font-sans">{business.title}</h1>
+              <div class="mt-2 text-sm text-gray-600 dark:text-gray-400 flex flex-wrap items-center font-roboto">
+                {business.category && <span>{business.category}</span>}
+                {business.category && business.address && <span class="mx-2">•</span>}
+                {business.address && <span>{business.address}</span>}
+                {(business.category || business.address) && business.phone && <span class="mx-2">•</span>}
+                {business.phone && <span>{business.phone}</span>}
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2 md:gap-4 my-6">
+              {business.website && (
+                <a href={business.website} target="_blank" class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <span class="material-symbols-outlined mr-2 text-lg">language</span>
+                  Sitio web
+                </a>
+              )}
+              {business.map_url && (
+                <a href={business.map_url} target="_blank" class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <span class="material-symbols-outlined mr-2 text-lg">directions</span>
+                  Cómo llegar
+                </a>
+              )}
+              {business.phone && (
+                <a href={`tel:${business.phone}`} class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <span class="material-symbols-outlined mr-2 text-lg">call</span>
+                  Llamar
+                </a>
+              )}
+            </div>
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 flex flex-col md:flex-row items-start gap-4">
+              <div class="flex items-center font-roboto">
+                {business.rating && <p class="text-lg font-medium mr-2">{Number(business.rating).toFixed(1)}</p>}
+                {business.rating && (
+                  <div class="flex items-center">
+                    <Rating rating={business.rating || 0} />
+                    {business.rating_count && <p class="text-sm text-gray-500 dark:text-gray-400 ml-2">({business.rating_count} reseñas)</p>}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div class="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">
+            <div>
+              <div class="mb-8">
+                {business.description && <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Sobre este sitio</h2>}
+                {business.description && <p class="text-base text-gray-700 dark:text-gray-300 leading-relaxed">{business.description}</p>}
+              </div>
+              <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                      <span class="material-symbols-outlined mr-3">info</span>
+                      Informacion de contacto
+                    </h2>
+                    <div class="space-y-4 text-sm">
+                      {business.address && (
+                        <p class="flex items-center text-gray-700 dark:text-gray-300">
+                          <span class="material-symbols-outlined mr-3">location_on</span>
+                          <span>{business.address}</span>
+                        </p>
+                      )}
+                      {business.phone && (
+                        <p class="flex items-center text-gray-700 dark:text-gray-300">
+                          <span class="material-symbols-outlined mr-3">phone</span>
+                          {business.phone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                      <span class="material-symbols-outlined mr-3">schedule</span>
+                      Horarios
+                      {openingStatus.text && (
+                        <span class={`ml-4 text-sm font-semibold ${openingStatus.color}`}>{openingStatus.text}</span>
+                      )}
+                    </h2>
+                    <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                      {[
+                        { day: 'Lunes', hours: business.monday },
+                        { day: 'Martes', hours: business.tuesday },
+                        { day: 'Miércoles', hours: business.wednesday },
+                        { day: 'Jueves', hours: business.thursday },
+                        { day: 'Viernes', hours: business.friday },
+                        { day: 'Sábado', hours: business.saturday },
+                        { day: 'Domingo', hours: business.sunday },
+                      ].map(({ day, hours }) => (
+                        <li class="flex justify-between items-start">
+                          <strong class="font-semibold">{day}:</strong>
+                          <div class="text-right">
+                            {(hours || 'Cerrado').split(',').map((part: string) => (
+                              <div>{part.trim()}</div>
+                            ))}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {allAttributes.length > 0 && (
+            <div class="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Servicios</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                {allAttributes.map(item => (
+                  <div class="flex items-center text-sm">
+                    <span class={`material-symbols-outlined mr-3 text-base ${item.available ? 'text-green-500' : 'text-red-500'}`}>
+                      {item.available ? 'check' : 'close'}
+                    </span>
+                    <span class={`capitalize ${!item.available && 'line-through text-gray-500'}`}>{item.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div class="lg:col-span-5">
+          <div class="sticky top-8">
+            {business.latitude && business.longitude && (
+              <div class="rounded-lg overflow-hidden h-[350px]">
+                <Map latitude={business.latitude || 0} longitude={business.longitude || 0} />
+              </div>
+            )}
+            {business.address && business.map_url && (
+              <div class="mt-4 text-left">
+                <a href={business.map_url} target="_blank" class="text-sm text-blue-600 dark:text-blue-400 flex items-center">
+                  <span class="material-symbols-outlined mr-2">location_on</span>
+                  {business.address}
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</Layout>

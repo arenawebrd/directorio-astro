@@ -1,0 +1,81 @@
+---
+import Layout from '../layouts/Layout.astro';
+import type { Business } from '../types';
+import { slugify } from '../utils/slugify';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+// Fetch filters to get city data
+const filtersResponse = await fetch(new URL('/api/filters', Astro.url.origin));
+const { provinceToCities } = filtersResponse.ok ? await filtersResponse.json() : { provinceToCities: {} };
+
+let originalCity = '';
+if (provinceToCities) {
+  const allCities = Object.values(provinceToCities).flat();
+  const cityMap = new Map(allCities.map((item: any) => [slugify(item), item]));
+  if (slug) {
+    originalCity = cityMap.get(slug) || '';
+  }
+}
+
+// Fetch listings for the specified city
+const listingsUrl = new URL('/api/listings', Astro.url.origin);
+if (originalCity) {
+  listingsUrl.searchParams.set('city', originalCity);
+}
+const listingsResponse = await fetch(listingsUrl);
+const businesses: Business[] | null = listingsResponse.ok ? await listingsResponse.json() : null;
+const error = listingsResponse.ok ? null : { message: `Failed to fetch listings: ${listingsResponse.statusText}` };
+
+const cityName = originalCity ? originalCity.charAt(0).toUpperCase() + originalCity.slice(1) : 'Listings';
+---
+
+<Layout title={`Listings in ${cityName}`}>
+  <main class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+      <a href="/" class="inline-flex items-center text-indigo-600 hover:text-indigo-500 font-medium">
+        <span class="material-symbols-outlined mr-2">arrow_back</span>
+        Back to Home
+      </a>
+      <h1 class="text-4xl font-extrabold text-gray-800 mt-4">
+        Listings in {cityName}
+      </h1>
+    </div>
+
+    {error && <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">Error: {error.message}</div>}
+    
+    {!error && businesses && businesses.length === 0 && (
+      <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+        <p class="font-bold">No businesses found</p>
+        <p>There are no listings available for this city yet.</p>
+      </div>
+    )}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {businesses && businesses.map((business: Business) => (
+        <div class="bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col">
+          <div class="p-6 flex-grow">
+            <h3 class="text-xl font-bold text-gray-800 mb-2">
+              <a href={`/business/${business.id}`} class="hover:text-indigo-600 transition-colors">
+                {business.title}
+              </a>
+            </h3>
+            <p class="text-sm text-gray-600 mb-4">
+              <span class="font-medium">Category:</span> {business.category}
+            </p>
+            <p class="text-sm text-gray-600 mb-4">
+              <span class="font-medium">Address:</span> {business.address}
+            </p>
+          </div>
+          <div class="bg-gray-50 p-4 mt-auto">
+            <a href={`/business/${business.id}`} class="font-medium text-indigo-600 hover:text-indigo-500 flex items-center">
+              View Details <span class="material-symbols-outlined ml-1 text-sm">arrow_forward</span>
+            </a>
+          </div>
+        </div>
+      ))}
+    </div>
+  </main>
+</Layout>

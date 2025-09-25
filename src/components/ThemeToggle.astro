@@ -1,0 +1,39 @@
+---
+// src/components/ThemeToggle.astro
+---
+<button class="theme-toggle p-2 rounded-full">
+  <span class="material-symbols-outlined">light_mode</span>
+</button>
+
+<script>
+  const themeToggles = document.querySelectorAll('.theme-toggle');
+  
+  const applyTheme = (theme: string) => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      themeToggles.forEach(toggle => {
+        const themeIcon = toggle.querySelector('span');
+        if (themeIcon) themeIcon.textContent = 'dark_mode';
+      });
+    } else {
+      document.documentElement.classList.remove('dark');
+      themeToggles.forEach(toggle => {
+        const themeIcon = toggle.querySelector('span');
+        if (themeIcon) themeIcon.textContent = 'light_mode';
+      });
+    }
+  };
+
+  // Apply theme on initial load
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  applyTheme(savedTheme);
+
+  themeToggles.forEach(themeToggle => {
+    themeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      const newTheme = isDark ? 'light' : 'dark';
+      localStorage.setItem('theme', newTheme);
+      applyTheme(newTheme);
+    });
+  });
+</script>
